@@ -50,6 +50,34 @@ export class JestRunner {
     await this.runTerminalCommand(command);
   }
 
+  public async runCurrentTestEx(args?: object) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      return;
+    }
+
+    await editor.document.save();
+
+    const filePath = editor.document.fileName;
+    const testName = this.findCurrentTestName(editor);
+    let options = [];
+    for(let key in args) {
+      if(key === 'options') {
+        if(Array.isArray(args[key])) {
+          options = args[key];
+        } else if(typeof args[key] === 'string') {
+          options = [args[key]];
+        }
+      }
+    }
+    const command = this.buildJestCommand(filePath, testName, options);
+
+    this.previousCommand = command;
+
+    await this.goToProjectDirectory();
+    await this.runTerminalCommand(command);
+  }
+
   public async runCurrentFile(options?: string[]) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {

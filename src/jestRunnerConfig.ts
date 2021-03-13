@@ -41,7 +41,9 @@ export class JestRunnerConfig {
   }
 
   public get projectPath(): string {
-    return vscode.workspace.getConfiguration().get('jestrunner.projectPath') || this.currentWorkspaceFolderPath;
+    return vscode.workspace.getConfiguration().get('jestrunner.projectPath') ||
+      path.dirname(this.jestConfigPath) ||
+      this.currentWorkspaceFolderPath;
   }
 
   public get currentWorkspaceFolderPath() {

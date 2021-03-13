@@ -135,6 +135,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"compile": "webpack --mode development",
 		"watch": "webpack --mode development --watch",
+		"patch": "yarn compile && cp dist/extension.js ~/.vscode/extensions/firsttris.vscode-jest-runner-*/dist/extension.js",
 		"postinstall": "node ./node_modules/vscode/bin/install",
 		"test": "npm run test-compile && node ./out/test/runTest.js",
 		"test-compile": "tsc -p ./",

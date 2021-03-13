@@ -13,7 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (typeof argument === 'string') {
       jestRunner.runCurrentTest(argument);
     } else {
-      jestRunner.runCurrentTest();
+      jestRunner.runCurrentTestEx(argument);
     }
   });
   const runJestFile = vscode.commands.registerCommand('extension.runJestFile', async () => jestRunner.runCurrentFile());
