@@ -1,5 +1,6 @@
 import { parse } from 'jest-editor-support';
 import * as vscode from 'vscode';
+import * as _ from 'lodash';
 import { JestRunnerConfig } from './jestRunnerConfig';
 import {
   escapePlusSign,
@@ -11,6 +12,8 @@ import {
   quote,
   unquote,
 } from './util';
+
+import { jestRunnerLoader } from './jestRunnerLoader';
 
 interface DebugCommand {
   documentUri: vscode.Uri;
@@ -48,6 +51,53 @@ export class JestRunner {
 
     await this.goToProjectDirectory();
     await this.runTerminalCommand(command);
+  }
+
+  public async runJestLen(args?: object, ...rest: []) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      return;
+    }
+
+    await editor.document.save();
+
+    const filePath = editor.document.fileName;
+    const testName = this.findCurrentTestName(editor);
+
+    let options = [];
+    for(let key in args) {
+      if(key === 'options') {
+        if(Array.isArray(args[key])) {
+          options = args[key];
+        } else if(typeof args[key] === 'string') {
+          options = [args[key]];
+        }
+      }
+    }
+    const command = this.buildJestCommand(filePath, testName, options);
+
+    const jestRunnerConfig = await jestRunnerLoader();
+    const lenOptions = _.get(jestRunnerConfig, 'lenOptions', []);
+    const lenOpt = _.find(lenOptions, { name: args });
+
+    if(lenOpt) {
+      // checkfor runner cb
+      const runner = _.get(lenOpt, 'runner');
+      if(_.isFunction(runner)) {
+        const runnerCtx = {
+          vscode,
+          jestrunner: this,
+          jestRunnerConfig,
+          args: {
+            testName,
+            filePath,
+            options,
+            command,
+          }
+        };
+        await runner(runnerCtx);
+      }
+    }
   }
 
   public async runCurrentTestEx(args?: object) {
@@ -223,7 +273,14 @@ export class JestRunner {
 
   private async runTerminalCommand(command: string) {
     if (!this.terminal) {
-      this.terminal = vscode.window.createTerminal('jest');
+      const terminalName = 'jestRunner';
+      // find opening terminals
+      const terminals = _.get(vscode.window, 'terminals');
+      let terminal = _.find(terminals, { name: terminalName });
+      if(!terminal) {
+        terminal = vscode.window.createTerminal(terminalName);
+      }
+      this.terminal = terminal;
     }
     this.terminal.show();
     await vscode.commands.executeCommand('workbench.action.terminal.clear');

@@ -1,13 +1,20 @@
 import { parse, ParsedNode } from 'jest-editor-support';
-import { CodeLens, CodeLensProvider, Range, TextDocument } from 'vscode';
+import { CodeLens, CodeLensProvider, Range, TextDocument, workspace } from 'vscode';
+import * as vscode from 'vscode';
+import * as _ from 'lodash';
 import { findFullTestName, escapeRegExp } from './util';
+import { jestRunnerLoader } from './jestRunnerLoader';
 
-function getTestsBlocks(parsedNode: ParsedNode, parseResults: ParsedNode[]): CodeLens[] {
+async function getTestsBlocks(parsedNode: ParsedNode, parseResults: ParsedNode[]): Promise<CodeLens[]> {
   const codeLens: CodeLens[] = [];
 
-  parsedNode.children?.forEach(subNode => {
-    codeLens.push(...getTestsBlocks(subNode, parseResults));
-  });
+  // parsedNode.children?.forEach(subNode => {
+  //   codeLens.push(...getTestsBlocks(subNode, parseResults));
+  // });
+  await Promise.all(_.get(parsedNode, 'children', []).map(async (subNode) => {
+    const lens = await getTestsBlocks(subNode, parseResults)
+    codeLens.push(...lens);
+  }));
 
   const range = new Range(
     parsedNode.start.line - 1,
@@ -35,6 +42,25 @@ function getTestsBlocks(parsedNode: ParsedNode, parseResults: ParsedNode[]): Cod
     })
   );
 
+  try {
+    const mod = await jestRunnerLoader();
+    // normalize mod
+    const lenOptions = _.get(mod, 'lenOptions', []);
+    const lens = _.map(lenOptions, (lenOpt) => {
+      const name = _.get(lenOpt, 'name');
+      const title = _.get(lenOpt, 'title', name);
+      const command = _.get(lenOpt, 'command', 'extension.runJestLen');
+      return new CodeLens(range, {
+        arguments: [name],
+        command,
+        title,
+      });
+    });
+    codeLens.push(...lens);
+  } catch (err) {
+    vscode.window.showWarningMessage(`err: ${JSON.stringify(err)}`);
+  }
+
   return codeLens;
 }
 
@@ -43,7 +69,11 @@ export class JestRunnerCodeLensProvider implements CodeLensProvider {
     const parseResults = parse(document.fileName, document.getText()).root.children;
 
     const codeLens = [];
-    parseResults.forEach(parseResult => codeLens.push(...getTestsBlocks(parseResult, parseResults)));
+    // parseResults.forEach(parseResult => codeLens.push(...getTestsBlocks(parseResult, parseResults)));
+    await Promise.all(_.map(parseResults, async (parseResult) => {
+      const lens = await getTestsBlocks(parseResult, parseResults);
+      codeLens.push(...lens);
+    }))
     return codeLens;
   }
 }

@@ -16,6 +16,11 @@ export function activate(context: vscode.ExtensionContext) {
       jestRunner.runCurrentTestEx(argument);
     }
   });
+
+  const runJestLen = vscode.commands.registerCommand('extension.runJestLen', async (...args) => {
+    jestRunner.runJestLen(...args);
+  });
+
   const runJestFile = vscode.commands.registerCommand('extension.runJestFile', async () => jestRunner.runCurrentFile());
   const debugJest = vscode.commands.registerCommand('extension.debugJest', async (argument: object | string) => {
     if (typeof argument === 'string') {
@@ -37,6 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(codeLensProviderDisposable);
   }
   context.subscriptions.push(runJest);
+  context.subscriptions.push(runJestLen);
   context.subscriptions.push(runJestFile);
   context.subscriptions.push(debugJest);
   context.subscriptions.push(runPrev);
